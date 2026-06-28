@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a1a">
+    <title>春潮寮メニュー</title>
+    <!-- LINE Seed Font -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/siwonpaik/LINESeedJP@main/css/font.css">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1a1a1a;
+            --text-main: #FFFFFF;
+            --text-sub: #E0E0E0;
+            --text-accent: #FFB74D;
+            --text-countdown: #FFCC80;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'LINE Seed JP', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 400px;
+            height: 250px;
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 25px;
+        }
+
+        /* Image and Fade */
+        .food-image {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 70%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: 1;
+            /* Gradient fade from left to right */
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 50%);
+            mask-image: linear-gradient(to right, transparent 0%, black 50%);
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .next-meal-title {
+            color: var(--text-accent);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .main-dish {
+            color: var(--text-main);
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1.3;
+            max-width: 85%;
+            margin-bottom: auto;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .side-dishes {
+            color: var(--text-sub);
+            font-size: 13px;
+            font-weight: 400;
+            margin-top: 15px;
+            max-width: 90%;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+        }
+
+        .countdown {
+            color: var(--text-countdown);
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 15px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            align-self: center;
+            margin: auto;
+            font-size: 18px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card" id="card" style="display: none;">
+        <div class="food-image" id="food-image"></div>
+        <div class="content">
+            <div>
+                <div class="next-meal-title" id="next-meal-title">次の食事: 読み込み中...</div>
+                <div class="main-dish" id="main-dish">ワクワク...🍽️</div>
+            </div>
+            <div>
+                <div class="side-dishes" id="side-dishes">副菜: </div>
+                <div class="countdown" id="countdown">⏰ あと --:--:--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading-msg">メニュー情報を取得中...</div>
+
+    <script>
+        let targetTime = null;
+        let menuDataCache = null;
+
+        async function fetchMenu() {
+            try {
+                // Fetch from the local JSON (or GitHub Pages)
+                const response = await fetch('menu.json?' + new Date().getTime());
+                const data = await response.json();
+                menuDataCache = data;
+                updateDisplay();
+            } catch (error) {
+                document.getElementById('loading-msg').innerText = "データの取得に失敗しました😭";
+                console.error(error);
+            }
+        }
+
+        function updateDisplay() {
+            if (!menuDataCache) return;
+
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+            
+            // Generate dates to check (today, tomorrow)
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toLocaleDateString('sv-SE');
+
+            const datesToCheck = [todayStr, tomorrowStr];
+            let nextMeal = null;
+            let nextMealDateStr = null;
+            let mealTypeStr = null;
+            let emoji = "";
+
+            // Find the next meal
+            for (const dStr of datesToCheck) {
+                if (!menuDataCache[dStr]) continue;
+                const dayMenu = menuDataCache[dStr];
+                
+                const meals = [
+                    { key: 'breakfast', name: '朝食', emoji: '🌅' },
+                    { key: 'lunch', name: '昼食', emoji: '🍱' },
+                    { key: 'dinner', name: '夕食', emoji: '🥩' }
+                ];
+
+                for (const meal of meals) {
+                    const mealData = dayMenu[meal.key];
+                    if (!mealData || !mealData.time) continue;
+                    
+                    // Parse target time
+                    const [hour, minute] = mealData.time.split(':');
+                    const tTime = new Date(dStr);
+                    tTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+
+                    if (tTime > now) {
+                        nextMeal = mealData;
+                        nextMealDateStr = dStr;
+                        mealTypeStr = meal.name;
+                        emoji = meal.emoji;
+                        targetTime = tTime;
+                        break;
+                    }
+                }
+                if (nextMeal) break;
+            }
+
+            if (!nextMeal) {
+                document.getElementById('loading-msg').innerText = "次の食事データがありません";
+                return;
+            }
+
+            // Hide loading, show card
+            document.getElementById('loading-msg').style.display = 'none';
+            document.getElementById('card').style.display = 'flex';
+
+            // Parse date for display
+            const targetDateObj = new Date(nextMealDateStr);
+            const m = targetDateObj.getMonth() + 1;
+            const d = targetDateObj.getDate();
+
+            document.getElementById('next-meal-title').innerText = `${emoji} ${m}月${d}日の${mealTypeStr}`;
+            document.getElementById('main-dish').innerText = nextMeal.main_dish;
+            
+            if (nextMeal.side_dishes) {
+                document.getElementById('side-dishes').innerText = `副菜: ${nextMeal.side_dishes}`;
+            } else {
+                document.getElementById('side-dishes').innerText = "";
+            }
+
+            if (nextMeal.image_url) {
+                document.getElementById('food-image').style.backgroundImage = `url('${nextMeal.image_url}')`;
+            } else {
+                document.getElementById('food-image').style.backgroundImage = 'none';
+            }
+        }
+
+        function updateCountdown() {
+            if (!targetTime) return;
+            const now = new Date();
+            const diffMs = targetTime - now;
+
+            if (diffMs <= 0) {
+                document.getElementById('countdown').innerText = "🎉 ご飯の時間です！ 🎉";
+                // Refresh data after 1 minute to show next meal
+                setTimeout(fetchMenu, 60000);
+            } else {
+                const totalSeconds = Math.floor(diffMs / 1000);
+                const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const seconds = String(totalSeconds % 60).padStart(2, '0');
+                document.getElementById('countdown').innerText = `⏰ あと ${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        // Initialize
+        fetchMenu();
+        setInterval(updateCountdown, 1000);
+        setInterval(fetchMenu, 1000 * 60 * 30); // Refresh data every 30 minutes
+
+    </script>
+</body>
+</html>
