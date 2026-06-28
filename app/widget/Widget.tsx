@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlexWidget, TextWidget, ImageWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget, ImageWidget, OverlapWidget } from 'react-native-android-widget';
 
 export function MenuWidget({ menuData, nextMealType, targetDateStr }) {
   if (!menuData || !targetDateStr) {
@@ -33,23 +33,21 @@ export function MenuWidget({ menuData, nextMealType, targetDateStr }) {
   const [year, month, day] = targetDateStr.split('-');
 
   return (
-    <FlexWidget
+    <OverlapWidget
       style={{
         height: 'match_parent',
         width: 'match_parent',
-        backgroundColor: '#1a1a1a',
         borderRadius: 24,
       }}
     >
+      <FlexWidget style={{ width: 'match_parent', height: 'match_parent', backgroundColor: '#1a1a1a' }} />
+      
       {mealInfo.image_url ? (
         <ImageWidget
           image={mealInfo.image_url}
           imageWidth={400}
           imageHeight={250}
           style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
             width: 'match_parent',
             height: 'match_parent',
           }}
@@ -58,12 +56,9 @@ export function MenuWidget({ menuData, nextMealType, targetDateStr }) {
 
       <FlexWidget
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: 'match_parent',
           height: 'match_parent',
-          backgroundColor: '#1a1a1ae6',
+          backgroundColor: 'rgba(26, 26, 26, 0.9)',
         }}
       />
 
@@ -99,6 +94,6 @@ export function MenuWidget({ menuData, nextMealType, targetDateStr }) {
           />
         </FlexWidget>
       </FlexWidget>
-    </FlexWidget>
+    </OverlapWidget>
   );
 }
