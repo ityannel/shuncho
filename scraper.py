@@ -154,13 +154,31 @@ def main():
                 
                 b_time, l_time, d_time = get_meal_times_for_date(parsed_date)
                 
-                # Rows for meals: Breakfast=1, Lunch=5, Dinner=10 (from our earlier analysis)
-                try:
-                    b_cell = table[1][col_idx]
-                    l_cell = table[5][col_idx]
-                    d_cell = table[10][col_idx]
-                except IndexError:
-                    continue
+                current_meal = None
+                meal_texts = { "breakfast": [], "lunch": [], "dinner": [] }
+                
+                for r_idx in range(1, len(table)):
+                    row = table[r_idx]
+                    first_col = row[0]
+                    if first_col:
+                        first_col_text = first_col.replace('\n', '').replace(' ', '')
+                        if '朝' in first_col_text:
+                            current_meal = "breakfast"
+                        elif '昼' in first_col_text:
+                            current_meal = "lunch"
+                        elif '夕' in first_col_text:
+                            current_meal = "dinner"
+                        elif '計' in first_col_text:
+                            current_meal = None
+                            
+                    if current_meal and col_idx < len(row):
+                        cell_text = row[col_idx]
+                        if cell_text:
+                            meal_texts[current_meal].append(cell_text)
+                
+                b_cell = '\n'.join(meal_texts["breakfast"])
+                l_cell = '\n'.join(meal_texts["lunch"])
+                d_cell = '\n'.join(meal_texts["dinner"])
                 
                 b_main, b_sides = extract_meal_items(b_cell, "breakfast")
                 l_main, l_sides = extract_meal_items(l_cell, "lunch")
